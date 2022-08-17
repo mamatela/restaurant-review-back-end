@@ -1,0 +1,1394 @@
+openapi: '3.0.0'
+info:
+  version: 1.0.0
+  title: Restaurant Review API
+  description: Toptal take-home project
+  termsOfService: http://swagger.io/terms/
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:3000/v1
+   # description: development
+  - url: https://gm-restaurant-review-api.herokuapp.com/v1
+    # description: heroku
+tags:
+  - name: Ping
+  - name: Auth
+  - name: User
+  - name: Restaurant
+  - name: Review
+  - name: Notification
+paths:
+  /ping:
+    get:
+      summary: ping
+      description: ping api to see if it's live
+      tags:
+        - "Ping"
+      x-eov-operation-id: ping
+      x-eov-operation-handler: ping.handler
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: pong
+  /users:
+    post:
+      summary: Create new user
+      description: create new user
+      tags:
+        - "User"
+      security:
+        - bearerAuth: ['admin']
+      x-eov-operation-id: createUser
+      x-eov-operation-handler: users.handler
+      requestBody:
+        description: User body
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Edit user
+      tags:
+        - "User"
+      security:
+        - bearerAuth: ['admin', 'customer', 'owner']
+      # operationId: updateUser
+      x-eov-operation-id: updateUser
+      x-eov-operation-handler: users.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        description: User body
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                role:
+                  type: string
+                  enum:
+                    - customer
+                    - owner
+                    - admin
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'            
+    get:
+      summary: Get user info
+      tags:
+        - "User"
+      security:
+        - bearerAuth: ['admin', 'customer', 'owner']
+      x-eov-operation-id: getUserById
+      x-eov-operation-handler: users.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete user (admin only)
+      tags:
+        - "User"
+      security:
+        - bearerAuth: ['admin']
+      # operationId: updateUser
+      x-eov-operation-id: deleteUser
+      x-eov-operation-handler: users.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      responses:
+        '204':
+          description: User deleted successfully
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  # /users/{userId}:
+  #   get:
+  #     summary: Returns user by id
+  #     tags:
+  #       - "User"
+  #     security:
+  #       - bearerAuth: []
+  #     x-eov-operation-id: getUserById
+  #     x-eov-operation-handler: users.handler
+  #     parameters:
+  #       - name: userId
+  #         in: path
+  #         required: true
+  #         schema:
+  #           type: number
+  #           format: int64
+  #     responses:
+  #       '200':
+  #         description: User
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/UserResponse'
+  #       'default':
+  #         description: error
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/Error'
+  /users/all:
+    get:
+      summary: Get all uses
+      description: Returns many users with paging and filter
+      tags:
+        - "User"
+      security:
+        - bearerAuth: ['admin']
+      x-eov-operation-id: getUsersWithPaging
+      x-eov-operation-handler: users.handler
+      parameters:
+        - name: pageNumber
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: searchString
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+            - customer
+            - owner
+            - admin
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties: 
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResponse'
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  pageNumber:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  hasPrevPage:
+                    type: boolean
+                  hasNextPage:
+                    type: boolean
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/register:
+    post:
+      summary: Register
+      description: Register new user and get auth tokens
+      tags:
+        - "Auth"
+      x-eov-operation-id: register
+      x-eov-operation-handler: auth.handler
+      requestBody:
+        description: User body
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  tokens:
+                    $ref: '#/components/schemas/AuthTokens'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      summary: Log in
+      description: Log in and get auth tokens
+      tags:
+        - "Auth"
+      x-eov-operation-id: login
+      x-eov-operation-handler: auth.handler
+      requestBody:
+        description: Email and password of the user
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  writeOnly: true
+                  type: string
+      responses:
+        '200':
+          description: User info and auth tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  tokens:
+                    $ref: '#/components/schemas/AuthTokens'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/logout:
+    post:
+      summary: Log out
+      description: Log out (refresh token becomes deactivated)
+      tags:
+        - "Auth"
+      x-eov-operation-id: logout
+      x-eov-operation-handler: auth.handler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '204':
+          description: Logged out successfully
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/refresh-tokens:
+    post:
+      summary: Refresh tokens
+      description: Returns newly created auth and refresh tokens
+      tags:
+        - "Auth"
+      x-eov-operation-id: refreshTokens
+      x-eov-operation-handler: auth.handler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Auth data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  tokens:
+                    $ref: '#/components/schemas/AuthTokens'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/forgot-password:
+    post:
+      summary: forgot-password
+      description: Sends an email with a password reset link
+      tags:
+        - "Auth"
+      x-eov-operation-id: forgotPassword
+      x-eov-operation-handler: auth.handler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '204':
+          description: Email sent
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/reset-password:
+    post:
+      summary: Reset password
+      tags:
+        - "Auth"
+      x-eov-operation-id: resetPassword
+      x-eov-operation-handler: auth.handler
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '204':
+          description: Password reset successfully
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/with-picture:
+    post:
+      summary: Create new restaurant
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: createRestaurantWithPicture
+      x-eov-operation-handler: restaurant.handler
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - fileName
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: string
+                long:
+                  type: string
+                distance:
+                  type: string
+                fileName:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Restaurant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Edit restaurant
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: editRestaurantWithPicture
+      x-eov-operation-handler: restaurant.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: string
+                long:
+                  type: string
+                distance:
+                  type: string
+                fileName:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Restaurant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants:
+    post:
+      summary: Create new restaurant
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: createRestaurant
+      x-eov-operation-handler: restaurant.handler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              $ref: '#/components/schemas/Restaurant'
+      responses:
+        '201':
+          description: Restaurant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Edit restaurant
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: editRestaurantById
+      x-eov-operation-handler: restaurant.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                distance:
+                  type: number
+                picUrl:
+                  type: string
+      responses:
+        '200':
+          description: edit successfull
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete restaurant
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: deleteRestaurantById
+      x-eov-operation-handler: restaurant.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      responses:
+        '204':
+          description: delete successfull
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Get restaurant details
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['owner', 'customer', 'admin']
+      x-eov-operation-id: getRestaurantDetailsById
+      x-eov-operation-handler: restaurant.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+        - name: searchString
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant:
+                    $ref: '#/components/schemas/Restaurant'
+                  bestReview:
+                    $ref: "#/components/schemas/Review"
+                  worstReview:
+                    $ref: "#/components/schemas/Review"
+                  ownReview:
+                    $ref: "#/components/schemas/Review"
+                  recentReviews:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Review"
+                  # myReviews:
+                  #   type: array
+                  #   items:
+                  #     $ref: "#/components/schemas/Review"
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/all:
+    get:
+      summary: Get all restaurants
+      description: Returns 1 page of restaurants, ordered top rated first. Can filter by average rating. This endpoint will be used by regular users and admins when navigating to Restaurants page.
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['customer', 'admin', 'owner']
+      x-eov-operation-id: getAllWithFilterAndPaging
+      x-eov-operation-handler: restaurant.handler
+      parameters:
+        - name: avgRating
+          in: query
+          required: false
+          schema:
+            type: number
+            # format: int64
+            minimum: 0
+            maximum: 5
+        - name: pageNumber
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: searchString
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties: 
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  pageNumber:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  hasPrevPage:
+                    type: boolean
+                  hasNextPage:
+                    type: boolean
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/by-owner:
+    get:
+      summary: Get own restaurants
+      tags:
+        - "Restaurant"
+      security:
+        - bearerAuth: ['owner', 'admin']
+      x-eov-operation-id: getOwnRestaurants
+      x-eov-operation-handler: restaurant.handler
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties: 
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        _id:
+                          type: number
+                          readOnly: true
+                        name:
+                          type: string
+                        address:
+                          type: string
+                        user:
+                          type: number
+                          readOnly: true
+                        avgRating:
+                          readOnly: true
+                          type: number
+                        reviewCount:
+                          readOnly: true
+                          type: number
+                          format: int64
+                        pendingReviewCount:
+                          type: number
+                          format: int64
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  pageNumber:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  hasPrevPage:
+                    type: boolean
+                  hasNextPage:
+                    type: boolean
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /reviews:
+    post:
+      summary: Add new review
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'customer']
+      x-eov-operation-id: createReview
+      x-eov-operation-handler: review.handler
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              $ref: '#/components/schemas/Review'
+      responses:
+        '201':
+          description: Review added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Edit review
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'customer']
+      x-eov-operation-id: editReviewById
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                rating:
+                  type: number
+                  format: int64
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Review edited successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    # get:
+    #   summary: Get one review
+    #   tags:
+    #     - "Review"
+    #   security:
+    #     - bearerAuth: ['admin', 'customer']
+    #   x-eov-operation-id: getReviewById
+    #   x-eov-operation-handler: review.handler
+    #   parameters:
+    #     - name: _id
+    #       in: query
+    #       required: true
+    #       schema:
+    #         type: number
+    #         format: int64
+    #   responses:
+    #     '200':
+    #       description: Review response
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/Review'
+    #     'default':
+    #       description: error
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete one review
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'customer']
+      x-eov-operation-id: deleteReviewById
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: _id
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      responses:
+        '204':
+          description: Review deleted successfully
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /reviews/by-restaurant:
+    get:
+      summary: Get reviews by restaurant
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'customer', 'owner']
+      x-eov-operation-id: getReviewsByRestaurantId
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: pageNumber
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: restaurantId
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+        - name: searchString
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties: 
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  pageNumber:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  hasPrevPage:
+                    type: boolean
+                  hasNextPage:
+                    type: boolean
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /reviews/reply:
+    post:
+      summary: Reply to a review
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: addReplyByReviewId
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: reviewId
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              required:
+                - "reply"
+              type: object
+              properties:
+                reply:
+                  type: string
+      responses:
+        '201':
+          description: Reply added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Edit reply
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: editReplyByReviewId
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: reviewId
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              type: object
+              required:
+                - "reply"
+              properties:
+                reply:
+                  type: string
+      responses:
+        '200':
+          description: Reply edited successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete reply
+      tags:
+        - "Review"
+      security:
+        - bearerAuth: ['admin', 'owner']
+      x-eov-operation-id: deleteReplyByReviewId
+      x-eov-operation-handler: review.handler
+      parameters:
+        - name: reviewId
+          in: query
+          required: true
+          schema:
+            type: number
+            format: int64
+      responses:
+        '204':
+          description: Reply deleted successfully
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/own:
+    get:
+      summary: Get own notifs
+      description: get all notifications for a user. With paging. This operation will also mark them as "seen"
+      tags:
+        - "Notification"
+      security:
+        - bearerAuth: ['admin', 'owner', 'customer']
+      x-eov-operation-id: getNotifsByUserId
+      x-eov-operation-handler: notification.handler
+      parameters:
+        - name: pageNumber
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: number
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties: 
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  pageNumber:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  hasPrevPage:
+                    type: boolean
+                  hasNextPage:
+                    type: boolean
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Set seen
+      description: sets all own notifs as "seen". Sets seenDate.
+      tags:
+        - "Notification"
+      security:
+        - bearerAuth: ['admin', 'owner', 'customer']
+      x-eov-operation-id: setNotifsAsSeenByUserId
+      x-eov-operation-handler: notification.handler
+      responses:
+        '204':
+          description: OK
+        'default':
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT 
+  schemas:
+    Notification:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+      properties:
+        _id:
+          type: number
+          readOnly: true
+        type:
+          type: string
+          enum:
+            - new_review
+            - new_reply
+        createdAt:
+          readOnly: true
+          type: string
+          format: date-time
+        seenDate:
+          readOnly: true
+          type: string
+          format: date-time
+        navUrl:
+          type: string
+        text:
+          type: string
+        user:
+          readOnly: true
+          anyOf:
+            - type: number
+            - $ref: '#/components/schemas/UserResponse'
+        review:
+          readOnly: true
+          anyOf:
+            - type: number
+            - $ref: '#/components/schemas/Review'
+    Restaurant:
+      type: object
+      additionalProperties: true
+      required:
+        # - _id
+        - name
+      properties:
+        _id:
+          type: number
+          readOnly: true
+        name:
+          type: string
+        address:
+          type: string
+        picUrl:
+          type: string
+        user:
+          readOnly: true
+          anyOf:
+            - type: number
+            - $ref: '#/components/schemas/UserResponse'
+        distance:
+          type: number
+        avgRating:
+          readOnly: true
+          type: number
+        reviewCount:
+          readOnly: true
+          type: number
+          format: int64
+        pendingReviewCount:
+          readOnly: true
+          type: number
+          format: int64
+    Review:
+      type: object
+      additionalProperties: false
+      required:
+        # - _id
+        - restaurant
+        - rating
+      properties:
+        _id:
+          type: number
+          readOnly: true
+        restaurant:
+          anyOf:
+            - type: number
+            - $ref: '#/components/schemas/Restaurant'
+          # writeOnly: true
+        user:
+          readOnly: true
+          anyOf:
+            - type: number
+            - $ref: '#/components/schemas/UserResponse'
+        date:
+          readOnly: true
+          type: string
+          format: date-time
+        rating:
+          type: number
+        comment:
+          type: string
+        reply:
+          readOnly: true
+          type: string
+        replyDate:
+          readOnly: true
+          type: string
+          format: date-time
+    User:
+      type: object
+      additionalProperties: false
+      required:
+        # - _id
+        - email
+        - password
+        - role
+      properties:
+        _id:
+          readOnly: true
+          type: number
+        email:
+          type: string
+          format: email
+          # pattern: ^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          writeOnly: true
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum:
+            - customer
+            - owner
+            - admin
+    UserResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          type: number
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum:
+            - customer
+            - owner
+            - admin
+    Token:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - expires
+      properties: 
+        token:
+          type: string
+        expires:
+          type: string
+          format: date-time
+    AuthTokens:
+      type: object
+      properties:
+        access:
+          $ref: '#/components/schemas/Token'
+        refresh:
+          $ref: '#/components/schemas/Token'
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
